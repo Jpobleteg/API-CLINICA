@@ -26,6 +26,7 @@ public class clinicaModel {
     @NotBlank(message = "Ingresar solo primer apellido")
     private String apellido;
 
-    @NotBlank(message = "El estado de prioridad es requerido (1-5)")
-    private int prioridad;
+    @Min(value = 1, message = "La prioridad mínima es 1.")
+    @Max(value = 5, message = "La prioridad máxima es 5.")
+    private Integer prioridad;
 }
