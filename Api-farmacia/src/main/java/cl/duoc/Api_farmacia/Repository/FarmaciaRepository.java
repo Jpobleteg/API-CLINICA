@@ -5,16 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
-public class FarmaciaRepository {
-
-    @Repository
-    public interface RecetaInsumoRepository<RecetaInsumoModel> extends JpaRepository<RecetaInsumoModel, Long> {
+@Repository
+public interface FarmaciaRepository<FarmaciaRepository> extends JpaRepository<FarmaciaRepository, Long> {
 
         // Método para consultar qué insumos están pendientes por paciente
-        List<RecetaInsumoModel> findByPacienteId(Long pacienteId);
+        List<FarmaciaRepository> findByPacienteId(Long pacienteId);
 
         // Buscar solicitudes filtradas por su estado actual
-        List<RecetaInsumoModel> findByEstado(String estado);
+        List<FarmaciaRepository> findByEstado(String estado);
     }
-
-}
