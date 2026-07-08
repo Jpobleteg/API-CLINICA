@@ -1,52 +1,47 @@
 package cl.duoc.Api_clinica.Controller;
 
-import cl.duoc.Api_clinica.Service.clinicaService;
+import cl.duoc.Api_clinica.Model.PacienteModel;
+import cl.duoc.Api_clinica.Service.ClinicaService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List; 
+
 @RestController
 @RequestMapping("/api/clinica")
+public class ClinicaController { 
 
-public class clinicaController {
-    @Autowired
-    private clinicaService service;
+    private final ClinicaService clinicaService;
+
+    public ClinicaController(ClinicaService clinicaService) {
+        this.clinicaService = clinicaService;
+    }
 
     @PostMapping
-    public ResponseEntity<Paciente>
-    registrar(@Valid @RequestBody Paciente paciente){
-
-        return ResponseEntity.ok(
-                service.registrar(paciente));
+    public ResponseEntity<PacienteModel> registrar(@Valid @RequestBody PacienteModel paciente) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(clinicaService.registrar(paciente));
     }
 
     @GetMapping
-    public List<Paciente> listar(){
-        return service.obtenerTodos();
+    public ResponseEntity<List<PacienteModel>> listar() {
+        return ResponseEntity.ok(clinicaService.obtenerTodos());
     }
 
     @GetMapping("/criticos")
-    public List<Paciente> criticos(){
-        return service.obtenerCriticos();
+    public ResponseEntity<List<PacienteModel>> criticos() {
+        return ResponseEntity.ok(clinicaService.obtenerCriticos());
     }
 
     @PutMapping("/{id}/evolucion")
-    public Paciente actualizar(
-            @PathVariable Long id,
-            @RequestBody String evolucion){
-
-        return service.actualizarEvolucion(
-                id,
-                evolucion);
+    public ResponseEntity<PacienteModel> actualizar(@PathVariable Long id, @RequestBody String evolucion) {
+        return ResponseEntity.ok(clinicaService.actualizarEvolucion(id, evolucion));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminar(
-            @PathVariable Long id){
-
-        service.eliminar(id);
-
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        clinicaService.eliminar(id);
+        return ResponseEntity.noContent().build(); 
     }
 }
