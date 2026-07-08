@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: Api-farmacia
+server:
+  port: 25001
+app:
+  endpoints:
+    gestion-camas-url: ${CAMAS_SERVICE_URL:http://localhost:25002}
+    pharmacy-service-url: ${PHARMACY_SERVICE_URL:http://localhost:25003}
