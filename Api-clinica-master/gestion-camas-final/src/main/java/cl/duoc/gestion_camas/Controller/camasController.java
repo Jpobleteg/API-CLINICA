@@ -1,11 +1,10 @@
 package cl.duoc.gestion_camas.Controller;
 
-import cl.duoc.gestion_camas.Model.camaDTO;
-import cl.duoc.gestion_camas.Model.camaModel;
-import cl.duoc.gestion_camas.Model.pabellonModel;
-import cl.duoc.gestion_camas.Service.camasService;
+import cl.duoc.gestion_camas.Model.CamaDTO; // Asumiendo corrección de nombre a Mayúscula
+import cl.duoc.gestion_camas.Model.CamaModel;
+import cl.duoc.gestion_camas.Model.PabellonModel;
+import cl.duoc.gestion_camas.Service.CamasService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,131 +13,118 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("api/v1/camas")
-public class camasController {
+@RequestMapping("/api/v1/camas") 
+public class CamasController { 
 
-    @Autowired
-    camasService service;
+    private final CamasService camasService;
 
+    public CamasController(CamasService camasService) {
+        this.camasService = camasService;
+    }
 
-    // PABELLONES
-
-
-    // READ ALL
+    // SECCIÓN PABELLONES
+    
     @GetMapping("/pabellones")
-    public ResponseEntity<List<pabellonModel>> obtenerTodosPabellones() {
-        List<pabellonModel> pabellones = service.getAllPabellones();
-        return new ResponseEntity<>(pabellones, HttpStatus.OK);
+    public ResponseEntity<List<PabellonModel>> obtenerTodosPabellones() {
+        List<PabellonModel> pabellones = camasService.getAllPabellones();
+        return ResponseEntity.ok(pabellones);
     }
 
-    // READ BY ID
     @GetMapping("/pabellones/{id}")
-    public ResponseEntity<pabellonModel> obtenerPabellonPorId(@PathVariable Long id) {
-        return service.getPabellonById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<PabellonModel> obtenerPabellonPorId(@PathVariable Long id) {
+        return camasService.getPabellonById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build()); 
+                // NOTA: Lo ideal será reemplazar este .orElse por excepciones del Service
     }
 
-    // CREATE
     @PostMapping("/pabellones")
-    public ResponseEntity<pabellonModel> crearPabellon(@Valid @RequestBody pabellonModel pabellon) {
-        pabellonModel nuevo = service.createPabellon(pabellon);
+    public ResponseEntity<PabellonModel> crearPabellon(@Valid @RequestBody PabellonModel pabellon) {
+        PabellonModel nuevo = camasService.createPabellon(pabellon);
         return new ResponseEntity<>(nuevo, HttpStatus.CREATED);
     }
 
-    // UPDATE (PUT)
     @PutMapping("/pabellones/{id}")
-    public ResponseEntity<pabellonModel> actualizarPabellon(
+    public ResponseEntity<PabellonModel> actualizarPabellon(
             @PathVariable Long id,
-            @Valid @RequestBody pabellonModel datos) {
+            @Valid @RequestBody PabellonModel datos) {
 
-        pabellonModel actualizado = service.updatePabellon(id, datos);
+        PabellonModel actualizado = camasService.updatePabellon(id, datos);
         if (actualizado != null) {
             return ResponseEntity.ok(actualizado);
         }
         return ResponseEntity.notFound().build();
     }
 
-    // DELETE (logico)
     @DeleteMapping("/pabellones/{id}")
     public ResponseEntity<Void> desactivarPabellon(@PathVariable Long id) {
-        if (service.deletePabellon(id)) {
+        if (camasService.deletePabellon(id)) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
     }
 
+    // SECCIÓN CAMAS
 
-    // CAMAS
-
-
-    // READ ALL por pabellon
     @GetMapping("/pabellon/{pabellonId}")
-    public ResponseEntity<List<camaModel>> obtenerCamasPorPabellon(@PathVariable Long pabellonId) {
-        List<camaModel> camas = service.getCamasByPabellon(pabellonId);
-        return new ResponseEntity<>(camas, HttpStatus.OK);
+    public ResponseEntity<List<CamaModel>> obtenerCamasPorPabellon(@PathVariable Long pabellonId) {
+        List<CamaModel> camas = camasService.getCamasByPabellon(pabellonId);
+        return ResponseEntity.ok(camas);
     }
 
-    // READ BY ID
     @GetMapping("/{id}")
-    public ResponseEntity<camaModel> obtenerCamaPorId(@PathVariable Long id) {
-        return service.getCamaById(id)
+    public ResponseEntity<CamaModel> obtenerCamaPorId(@PathVariable Long id) {
+        return camasService.getCamaById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // CREATE
     @PostMapping
-    public ResponseEntity<camaModel> crearCama(@Valid @RequestBody camaModel cama) {
-        camaModel nueva = service.createCama(cama);
+    public ResponseEntity<CamaModel> crearCama(@Valid @RequestBody CamaModel cama) {
+        CamaModel nueva = camasService.createCama(cama);
         return new ResponseEntity<>(nueva, HttpStatus.CREATED);
     }
 
-    // UPDATE (PUT)
     @PutMapping("/{id}")
-    public ResponseEntity<camaModel> actualizarCama(
+    public ResponseEntity<CamaModel> actualizarCama(
             @PathVariable Long id,
-            @Valid @RequestBody camaModel datos) {
+            @Valid @RequestBody CamaModel datos) {
 
-        camaModel actualizada = service.updateCama(id, datos);
+        CamaModel actualizada = camasService.updateCama(id, datos);
         if (actualizada != null) {
             return ResponseEntity.ok(actualizada);
         }
         return ResponseEntity.notFound().build();
     }
 
-    // PARTIAL UPDATE (PATCH)
     @PatchMapping("/{id}")
-    public ResponseEntity<camaModel> actualizarEstadoCama(
+    public ResponseEntity<CamaModel> actualizarEstadoCama(
             @PathVariable Long id,
             @RequestBody Map<String, String> request) {
 
         String nuevoEstado = request.get("estado");
 
         if (nuevoEstado == null || nuevoEstado.trim().isEmpty()) {
-            return ResponseEntity.badRequest().build(); // 400 si falta el campo "estado"
+            return ResponseEntity.badRequest().build(); 
         }
 
-        return service.updateEstadoCama(id, nuevoEstado)
+        return camasService.updateEstadoCama(id, nuevoEstado)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // DELETE BY ID
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarCamaPorId(@PathVariable Long id) {
-        if (service.deleteCama(id)) {
+        if (camasService.deleteCama(id)) {
             return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.notFound().build();
     }
 
-    // DISPONIBILIDAD — consumida por Api-clinica
-
-
-    // GET api/v1/camas/disponibilidad/{prioridad}
+    // DISPONIBILIDAD (Comunicación entre Microservicios)
 
     @GetMapping("/disponibilidad/{prioridad}")
-    public ResponseEntity<camaDTO> consultarDisponibilidad(@PathVariable int prioridad) {
-        return ResponseEntity.ok(service.getDisponibilidad(prioridad));
+    public ResponseEntity<CamaDTO> consultarDisponibilidad(@PathVariable int prioridad) {
+        return ResponseEntity.ok(camasService.getDisponibilidad(prioridad));
     }
 }
