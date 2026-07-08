@@ -1,7 +1,8 @@
-package Controller;
+package cl.duoc.gestion_camas.Controller; 
 
-import cl.duoc.Api_clinica.Service.camaService;
-import cl.duoc.Api_clinica.Model.camaModel;
+import cl.duoc.gestion_camas.Model.CamaModel;
+import cl.duoc.gestion_camas.Model.PabellonModel;
+import cl.duoc.gestion_camas.Service.CamasService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,213 +21,129 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class CamaControllerTest {
+class CamasControllerTest { 
 
     @Mock
-    private camaService service;
+    private CamasService camasService;
 
     @InjectMocks
-    private camaController controller;
+    private CamasController camasController; // Controlador bajo prueba
 
-    private camaModel cama;
+    private CamaModel cama;
+    private PabellonModel pabellon;
 
     @BeforeEach
     void setUp() {
-        cama = new camaModel();
-        cama.setId("CAMA-001");
-        cama.setPrioridad(1);
-        cama.setPabellon("Pabellon A");
-        cama.setDisponible(true);
+        pabellon = new PabellonModel();
+        pabellon.setId(1L);
+        pabellon.setNombre("Pabellón A");
+        pabellon.setActivo(1);
+
+        cama = new CamaModel();
+        cama.setId(100L); // IDs de tipo Long
+        cama.setNumeroCama("CAMA-001");
+        cama.setEstado("DISPONIBLE");
+        cama.setPrioridadMin(1);
+        cama.setPabellon(pabellon);
     }
 
-
-    //  GET ALL
-
+    // TEST: BUSCAR POR ID
 
     @Test
-    @DisplayName("obtenerTodas responde 200 con la lista")
-    void obtenerTodas_ok() {
+    @DisplayName("obtenerCamaPorId responde 200 cuando existe la cama")
+    void obtenerCamaPorId_existe() {
         // Arrange
-        when(service.getAllCamas()).thenReturn(List.of(cama));
+        when(camasService.getCamaById(100L)).thenReturn(Optional.of(cama));
 
-        // Act
-        ResponseEntity<List<camaModel>> resp = controller.obtenerTodas();
+        // Act - Sincronizado con el método real del controlador
+        ResponseEntity<CamaModel> resp = camasController.obtenerCamaPorId(100L);
 
         // Assert
         assertEquals(HttpStatus.OK, resp.getStatusCode());
-        assertEquals(1, resp.getBody().size());
-        assertEquals("CAMA-001", resp.getBody().get(0).getId());
-    }
-
-
-    //  GET BY ID
-
-
-    @Test
-    @DisplayName("obtenerPorId responde 200 cuando existe")
-    void obtenerPorId_existe() {
-        // Arrange
-        when(service.getCamaById("CAMA-001")).thenReturn(Optional.of(cama));
-
-        // Act
-        ResponseEntity<camaModel> resp = controller.obtenerPorId("CAMA-001");
-
-        // Assert
-        assertEquals(HttpStatus.OK, resp.getStatusCode());
-        assertEquals("CAMA-001", resp.getBody().getId());
+        assertNotNull(resp.getBody());
+        assertEquals("CAMA-001", resp.getBody().getNumeroCama());
     }
 
     @Test
-    @DisplayName("obtenerPorId responde 404 cuando NO existe")
-    void obtenerPorId_noExiste() {
+    @DisplayName("obtenerCamaPorId responde 404 cuando NO existe la cama")
+    void obtenerCamaPorId_noExiste() {
         // Arrange
-        when(service.getCamaById("CAMA-999")).thenReturn(Optional.empty());
+        when(camasService.getCamaById(999L)).thenReturn(Optional.empty());
 
         // Act
-        ResponseEntity<camaModel> resp = controller.obtenerPorId("CAMA-999");
+        ResponseEntity<CamaModel> resp = camasController.obtenerCamaPorId(999L);
 
         // Assert
         assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
     }
 
-
-    //  GET BY PABELLON
-
-
-    @Test
-    @DisplayName("obtenerPorPabellon responde 200 con camas del pabellón")
-    void obtenerPorPabellon_ok() {
-        // Arrange
-        when(service.getCamasByPabellon("Pabellon A")).thenReturn(List.of(cama));
-
-        // Act
-        ResponseEntity<List<camaModel>> resp = controller.obtenerPorPabellon("Pabellon A");
-
-        // Assert
-        assertEquals(HttpStatus.OK, resp.getStatusCode());
-        assertEquals(1, resp.getBody().size());
-    }
-
-    //  CREATE
-
+    // TEST: POST
 
     @Test
     @DisplayName("crearCama responde 201 CREATED")
     void crearCama_ok() {
         // Arrange
-        when(service.createCama(cama)).thenReturn(cama);
+        when(camasService.createCama(any(CamaModel.class))).thenReturn(cama);
 
         // Act
-        ResponseEntity<camaModel> resp = controller.crearCama(cama);
+        ResponseEntity<CamaModel> resp = camasController.crearCama(cama);
 
         // Assert
         assertEquals(HttpStatus.CREATED, resp.getStatusCode());
-        assertEquals("CAMA-001", resp.getBody().getId());
+        assertEquals(100L, resp.getBody().getId());
     }
 
-
-    //  PATCH — actualizar disponibilidad
-
+    // TEST: PATCH 
 
     @Test
-    @DisplayName("actualizarDisponibilidad responde 400 si falta el campo disponible")
-    void actualizarDisponibilidad_sinCampo() {
-        // Act — se manda un body vacío sin el campo "disponible"
-        ResponseEntity<camaModel> resp =
-                controller.actualizarDisponibilidad("CAMA-001", Map.of());
+    @DisplayName("actualizarEstadoCama responde 400 si falta el campo 'estado' en el Map")
+    void actualizarEstadoCama_sinCampo() {
+        // Act - Mandamos un mapa vacío
+        ResponseEntity<CamaModel> resp = camasController.actualizarEstadoCama(100L, Map.of());
 
         // Assert
         assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
-        verify(service, never()).updateDisponibilidad(anyString(), anyBoolean());
+        verify(camasService, never()).updateEstadoCama(anyLong(), anyString());
     }
 
     @Test
-    @DisplayName("actualizarDisponibilidad responde 200 cuando actualiza")
-    void actualizarDisponibilidad_ok() {
+    @DisplayName("actualizarEstadoCama responde 200 OK cuando se actualiza correctamente")
+    void actualizarEstadoCama_ok() {
         // Arrange
-        cama.setDisponible(false);
-        when(service.updateDisponibilidad("CAMA-001", false))
-                .thenReturn(Optional.of(cama));
+        cama.setEstado("OCUPADA");
+        when(camasService.updateEstadoCama(100L, "OCUPADA")).thenReturn(Optional.of(cama));
 
         // Act
-        ResponseEntity<camaModel> resp =
-                controller.actualizarDisponibilidad("CAMA-001", Map.of("disponible", false));
+        ResponseEntity<CamaModel> resp = camasController.actualizarEstadoCama(100L, Map.of("estado", "OCUPADA"));
 
         // Assert
         assertEquals(HttpStatus.OK, resp.getStatusCode());
-        assertFalse(resp.getBody().getDisponible());
+        assertEquals("OCUPADA", resp.getBody().getEstado());
     }
 
+    // TEST: ELIMINAR
+ 
     @Test
-    @DisplayName("actualizarDisponibilidad responde 404 cuando la cama NO existe")
-    void actualizarDisponibilidad_noExiste() {
+    @DisplayName("eliminarCamaPorId responde 204 cuando se elimina con éxito")
+    void eliminarCamaPorId_ok() {
         // Arrange
-        when(service.updateDisponibilidad("CAMA-999", true)).thenReturn(Optional.empty());
+        when(camasService.deleteCama(100L)).thenReturn(true);
 
         // Act
-        ResponseEntity<camaModel> resp =
-                controller.actualizarDisponibilidad("CAMA-999", Map.of("disponible", true));
-
-        // Assert
-        assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
-    }
-
-
-    //  UPDATE (PUT)
-
-
-    @Test
-    @DisplayName("actualizarCama responde 200 cuando existe")
-    void actualizarCama_ok() {
-        // Arrange
-        when(service.updateCama("CAMA-001", cama)).thenReturn(cama);
-
-        // Act
-        ResponseEntity<camaModel> resp = controller.actualizarCama("CAMA-001", cama);
-
-        // Assert
-        assertEquals(HttpStatus.OK, resp.getStatusCode());
-        assertEquals("CAMA-001", resp.getBody().getId());
-    }
-
-    @Test
-    @DisplayName("actualizarCama responde 404 cuando NO existe")
-    void actualizarCama_noExiste() {
-        // Arrange
-        when(service.updateCama("CAMA-999", cama)).thenReturn(null);
-
-        // Act
-        ResponseEntity<camaModel> resp = controller.actualizarCama("CAMA-999", cama);
-
-        // Assert
-        assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
-    }
-
-
-    //  DELETE
-
-
-    @Test
-    @DisplayName("eliminarCama responde 204 cuando elimina")
-    void eliminarCama_ok() {
-        // Arrange
-        when(service.deleteCama("CAMA-001")).thenReturn(true);
-
-        // Act
-        ResponseEntity<Void> resp = controller.eliminarCama("CAMA-001");
+        ResponseEntity<Void> resp = camasController.eliminarCamaPorId(100L);
 
         // Assert
         assertEquals(HttpStatus.NO_CONTENT, resp.getStatusCode());
     }
 
     @Test
-    @DisplayName("eliminarCama responde 404 cuando NO existe")
-    void eliminarCama_noExiste() {
+    @DisplayName("eliminarCamaPorId responde 404 si la cama a eliminar no existe")
+    void eliminarCamaPorId_noExiste() {
         // Arrange
-        when(service.deleteCama("CAMA-999")).thenReturn(false);
+        when(camasService.deleteCama(999L)).thenReturn(false);
 
         // Act
-        ResponseEntity<Void> resp = controller.eliminarCama("CAMA-999");
+        ResponseEntity<Void> resp = camasController.eliminarCamaPorId(999L);
 
         // Assert
         assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
