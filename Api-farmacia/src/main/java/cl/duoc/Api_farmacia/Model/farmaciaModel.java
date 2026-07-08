@@ -3,11 +3,10 @@ package cl.duoc.Api_farmacia.Model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-public class farmaciaModel {
-
     @Entity
     @Table(name = "RECETAS_INSUMOS")
-    public class RecetaInsumoModel {
+
+public class farmaciaModel {
 
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +26,4 @@ public class farmaciaModel {
 
         @Column(name = "fecha_solicitud", nullable = false)
         private LocalDateTime fechaSolicitud;
-    }
-
 }
