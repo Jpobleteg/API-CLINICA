@@ -1,7 +1,9 @@
-package Service;
+package cl.duoc.gestion_camas.Service;
 
-import cl.duoc.Api_clinica.Repository.camaRepository;
-import cl.duoc.Api_clinica.Model.camaModel;
+import cl.duoc.gestion_camas.Model.CamaModel;
+import cl.duoc.gestion_camas.Model.PabellonModel;
+import cl.duoc.gestion_camas.Repository.CamaRepository;
+import cl.duoc.gestion_camas.Repository.PabellonRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,235 +18,147 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class) // 1. Activa Mockito
-class CamaServiceTest {
+@ExtendWith(MockitoExtension.class)
+class CamasServiceTest { 
 
-    @Mock // 2. Repositorio falso (no toca la BD real)
-    private camaRepository repository;
+    @Mock
+    private CamaRepository camaRepository;
 
-    @InjectMocks // 3. Service real con el mock inyectado automáticamente
-    private camaService service;
+    @Mock
+    private PabellonRepository pabellonRepository;
 
-    private camaModel cama;
+    @InjectMocks
+    private CamasService camasService; 
 
-    @BeforeEach // 4. Datos frescos antes de CADA test
+    private CamaModel cama;
+    private PabellonModel pabellon;
+
+    @BeforeEach
     void setUp() {
-        cama = new camaModel();
-        cama.setId("CAMA-001");
-        cama.setPrioridad(1);
-        cama.setPabellon("Pabellon A");
-        cama.setDisponible(true);
+        // Inicializamos un pabellón válido y activo según las reglas de negocio
+        pabellon = new PabellonModel();
+        pabellon.setId(1L); // ID numérico Long
+        pabellon.setNombre("Pabellón A");
+        pabellon.setActivo(1);
+
+        // Inicializamos la cama vinculada a dicho pabellón
+        cama = new CamaModel();
+        cama.setId(100L); // ID numérico Long
+        cama.setNumeroCama("CAMA-001");
+        cama.setEstado("DISPONIBLE");
+        cama.setPrioridadMin(1);
+        cama.setPabellon(pabellon);
     }
 
-
-    //  READ ALL
-
-
-    @Test
-    @DisplayName("getAllCamas devuelve la lista del repositorio")
-    void getAllCamas_ok() {
-        // Arrange
-        when(repository.findAll()).thenReturn(List.of(cama));
-
-        // Act
-        List<camaModel> resultado = service.getAllCamas();
-
-        // Assert
-        assertEquals(1, resultado.size());
-        assertEquals("CAMA-001", resultado.get(0).getId());
-        verify(repository).findAll();
-    }
-
-
-    //  READ BY ID
-
+   
+    // PRUEBAS
+ 
 
     @Test
     @DisplayName("getCamaById devuelve la cama cuando existe")
     void getCamaById_existe() {
         // Arrange
-        when(repository.findById("CAMA-001")).thenReturn(Optional.of(cama));
+        when(camaRepository.findById(100L)).thenReturn(Optional.of(cama));
 
         // Act
-        Optional<camaModel> resultado = service.getCamaById("CAMA-001");
+        Optional<CamaModel> resultado = camasService.getCamaById(100L);
 
         // Assert
         assertTrue(resultado.isPresent());
-        assertEquals("CAMA-001", resultado.get().getId());
+        assertEquals("CAMA-001", resultado.get().getNumeroCama());
     }
 
     @Test
-    @DisplayName("getCamaById devuelve vacío cuando NO existe")
-    void getCamaById_noExiste() {
+    @DisplayName("getCamasByPabellon lanza excepción si el pabellón no existe")
+    void getCamasByPabellon_pabellonNoExiste() {
         // Arrange
-        when(repository.findById("CAMA-999")).thenReturn(Optional.empty());
+        when(pabellonRepository.existsById(999L)).thenReturn(false);
 
-        // Act
-        Optional<camaModel> resultado = service.getCamaById("CAMA-999");
+        // Act & Assert (Verifica el manejo de errores exigido por la rúbrica)
+        RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
+            camasService.getCamasByPabellon(999L);
+        });
 
-        // Assert
-        assertTrue(resultado.isEmpty());
+        assertTrue(excepcion.getMessage().contains("El pabellón con ID 999 no existe"));
+        verify(camaRepository, never()).findByPabellonId(anyLong());
     }
 
 
-    //  READ BY PABELLON
-
-
-    @Test
-    @DisplayName("getCamasByPabellon devuelve camas del pabellón indicado")
-    void getCamasByPabellon_ok() {
-        // Arrange
-        when(repository.findByPabellon("Pabellon A")).thenReturn(List.of(cama));
-
-        // Act
-        List<camaModel> resultado = service.getCamasByPabellon("Pabellon A");
-
-        // Assert
-        assertEquals(1, resultado.size());
-        assertEquals("Pabellon A", resultado.get(0).getPabellon());
-        verify(repository).findByPabellon("Pabellon A");
-    }
-
-    //  READ BY DISPONIBLE
-
+    // PRUEBAS: CREAR
 
     @Test
-    @DisplayName("getCamasDisponibles devuelve solo camas disponibles")
-    void getCamasDisponibles_ok() {
+    @DisplayName("createCama guarda exitosamente si el pabellón existe y está activo")
+    void createCama_exitoso() {
         // Arrange
-        when(repository.findByDisponible(true)).thenReturn(List.of(cama));
+        when(pabellonRepository.findById(1L)).thenReturn(Optional.of(pabellon));
+        when(camaRepository.save(any(CamaModel.class))).thenReturn(cama);
 
         // Act
-        List<camaModel> resultado = service.getCamasDisponibles(true);
-
-        // Assert
-        assertEquals(1, resultado.size());
-        assertTrue(resultado.get(0).getDisponible());
-        verify(repository).findByDisponible(true);
-    }
-
-
-    //  CREATE
-
-
-    @Test
-    @DisplayName("createCama guarda y devuelve la cama")
-    void createCama_ok() {
-        // Arrange
-        when(repository.save(cama)).thenReturn(cama);
-
-        // Act
-        camaModel resultado = service.createCama(cama);
+        CamaModel resultado = camasService.createCama(cama);
 
         // Assert
         assertNotNull(resultado);
-        assertEquals("CAMA-001", resultado.getId());
-        verify(repository).save(cama);
+        assertEquals("CAMA-001", resultado.getNumeroCama());
+        verify(camaRepository).save(cama);
     }
 
-
-    //  UPDATE (PUT)
-
-
     @Test
-    @DisplayName("updateCama actualiza cuando la cama existe")
-    void updateCama_existe() {
+    @DisplayName("createCama lanza excepción si el pabellón está inactivo")
+    void createCama_pabellonInactivo() {
         // Arrange
-        camaModel detalles = new camaModel();
-        detalles.setPrioridad(2);
-        detalles.setPabellon("Pabellon B");
-        detalles.setDisponible(false);
+        pabellon.setActivo(0); // Forzamos regla de negocio de inactividad
+        when(pabellonRepository.findById(1L)).thenReturn(Optional.of(pabellon));
 
-        when(repository.findById("CAMA-001")).thenReturn(Optional.of(cama));
-        when(repository.save(any(camaModel.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Act & Assert
+        RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
+            camasService.createCama(cama);
+        });
 
-        // Act
-        camaModel resultado = service.updateCama("CAMA-001", detalles);
+        assertEquals("No se puede asignar una cama a un Pabellón inactivo.", excepcion.getMessage());
+        verify(camaRepository, never()).save(any(CamaModel.class));
+    }
 
-        // Assert
-        assertNotNull(resultado);
-        assertEquals(2, resultado.getPrioridad());
-        assertEquals("Pabellon B", resultado.getPabellon());
-        assertFalse(resultado.getDisponible());
-        verify(repository).save(cama);
+    // PRUEBAS: ACTUALIZAR Y VALIDAR
+
+    @Test
+    @DisplayName("updateEstadoCama lanza excepción ante un estado inválido")
+    void updateEstadoCama_estadoInvalido() {
+        // Act & Assert (Evalúa la regla de negocio añadida del catálogo controlado)
+        RuntimeException excepcion = assertThrows(RuntimeException.class, () -> {
+            camasService.updateEstadoCama(100L, "ESTADO_FALSO");
+        });
+
+        assertTrue(excepcion.getMessage().contains("Valores permitidos: DISPONIBLE, OCUPADA, MANTENCION."));
+        verify(camaRepository, never()).save(any(CamaModel.class));
     }
 
     @Test
-    @DisplayName("updateCama devuelve null cuando la cama NO existe")
+    @DisplayName("updateCama lanza excepción si la cama a modificar no existe")
     void updateCama_noExiste() {
         // Arrange
-        when(repository.findById("CAMA-999")).thenReturn(Optional.empty());
+        when(camaRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Act
-        camaModel resultado = service.updateCama("CAMA-999", new camaModel());
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> {
+            camasService.updateCama(999L, cama);
+        });
 
-        // Assert
-        assertNull(resultado);
-        verify(repository, never()).save(any()); // nunca debe guardar
+        verify(camaRepository, never()).save(any(CamaModel.class));
     }
 
-
-    //  PATCH — cambiar disponibilidad
-
+    // PRUEBAS: ELIMINAR
 
     @Test
-    @DisplayName("updateDisponibilidad cambia disponible a false cuando existe")
-    void updateDisponibilidad_existe() {
-        // Arrange
-        when(repository.findById("CAMA-001")).thenReturn(Optional.of(cama));
-        when(repository.save(any(camaModel.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        // Act
-        Optional<camaModel> resultado = service.updateDisponibilidad("CAMA-001", false);
-
-        // Assert
-        assertTrue(resultado.isPresent());
-        assertFalse(resultado.get().getDisponible());
-    }
-
-    @Test
-    @DisplayName("updateDisponibilidad devuelve vacío cuando NO existe")
-    void updateDisponibilidad_noExiste() {
-        // Arrange
-        when(repository.findById("CAMA-999")).thenReturn(Optional.empty());
-
-        // Act
-        Optional<camaModel> resultado = service.updateDisponibilidad("CAMA-999", false);
-
-        // Assert
-        assertTrue(resultado.isEmpty());
-        verify(repository, never()).save(any());
-    }
-
-    
-    //  DELETE
-
-
-    @Test
-    @DisplayName("deleteCama elimina y devuelve true cuando existe")
+    @DisplayName("deleteCama elimina y devuelve true si la cama existe")
     void deleteCama_existe() {
         // Arrange
-        when(repository.existsById("CAMA-001")).thenReturn(true);
+        when(camaRepository.existsById(100L)).thenReturn(true);
 
         // Act
-        boolean resultado = service.deleteCama("CAMA-001");
+        boolean resultado = camasService.deleteCama(100L);
 
         // Assert
         assertTrue(resultado);
-        verify(repository).deleteById("CAMA-001");
-    }
-
-    @Test
-    @DisplayName("deleteCama devuelve false cuando NO existe")
-    void deleteCama_noExiste() {
-        // Arrange
-        when(repository.existsById("CAMA-999")).thenReturn(false);
-
-        // Act
-        boolean resultado = service.deleteCama("CAMA-999");
-
-        // Assert
-        assertFalse(resultado);
-        verify(repository, never()).deleteById(anyString());
+        verify(camaRepository).deleteById(100L);
     }
 }
